@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Your Ad Here">
+
+    <title>Buffer Your Golang HTML Templates, Or Else - Keene Industries</title>
+
+    <link rel="canonical" href="http://blog.cmdrkeene.net/2015/01/23/buffer-golang-html-templates/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/clean-blog.css">
+
+    <!-- Pygments Github CSS -->
+    <link rel="stylesheet" href="/css/syntax.css">
+
+    <!-- Custom Fonts -->
+    <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/css'>
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+</head>
+
+
+<body>
+
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Keene Industries</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            <ul class="nav navbar-nav navbar-right">
+                <li>
+                    <a href="/">Home</a>
+                </li>
+                
+                <li>
+                    <a href="/about/">About</a>
+                </li>
+                
+                <li>
+                    <a href="/contact/">Contact</a>
+                </li>
+                
+            </ul>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+
+
+    <!-- Post Header -->
+<header class="intro-header" style="background-image: url('/img/post-bg-02.jpg')">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <h1>Buffer Your Golang HTML Templates, Or Else</h1>
+                    
+                    <h2 class="subheading">Run your Go tests automatically with the entr(1) unix utility</h2>
+                    
+                    <span class="meta">Posted by Brandon Keene on January 23, 2015</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+
+				<p>So I ran into a sharp edge today inside Go’s
+<a href="http://golang.org/pkg/html/template/">html/template</a> package.</p>
+
+<p>If you learn about <a href="https://golang.org/doc/articles/wiki/">Writing Web Applications</a> 
+from the standard documentation, you might not see the problem right away. That 
+document creates a helper func to render HTML templates, and handle any errors 
+that come occur:</p>
+
+<div class="highlight"><pre><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nx">renderTemplate</span><span class="p">(</span><span class="nx">w</span> <span class="nx">http</span><span class="p">.</span><span class="nx">ResponseWriter</span><span class="p">,</span> <span class="nx">tmpl</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">p</span> <span class="o">*</span><span class="nx">Page</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">t</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">template</span><span class="p">.</span><span class="nx">ParseFiles</span><span class="p">(</span><span class="nx">tmpl</span> <span class="o">+</span> <span class="s">&quot;.html&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">http</span><span class="p">.</span><span class="nx">Error</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="nx">err</span><span class="p">.</span><span class="nx">Error</span><span class="p">(),</span> <span class="nx">http</span><span class="p">.</span><span class="nx">StatusInternalServerError</span><span class="p">)</span>
+        <span class="k">return</span>
+    <span class="p">}</span>
+    <span class="nx">err</span> <span class="p">=</span> <span class="nx">t</span><span class="p">.</span><span class="nx">Execute</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="nx">p</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">http</span><span class="p">.</span><span class="nx">Error</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="nx">err</span><span class="p">.</span><span class="nx">Error</span><span class="p">(),</span> <span class="nx">http</span><span class="p">.</span><span class="nx">StatusInternalServerError</span><span class="p">)</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></div>
+
+<p>You might expect (incorrectly as we’ll see) that the client will receive 500 on 
+<strong>any</strong> <code>Execute()</code> error. But not always! Because <code>Execute()</code> only cares about
+an <code>io.Writer</code> it is totally fine returning an error at any point in its
+<code>Write()</code> process.</p>
+
+<p>This <a href="http://play.golang.org/p/fBcfegyZEB">Play example</a> shows two
+<code>template.Execute()</code> failures that result in a different HTTP status code. This
+snippet shows you the basic idea:</p>
+
+<div class="highlight"><pre><code class="language-go" data-lang="go"><span class="c1">// broken template &quot;foo&quot;</span>
+<span class="nx">src</span> <span class="o">:=</span> <span class="s">`{{.Foo}}`</span>
+
+<span class="c1">// an http.ResponseWriter</span>
+<span class="nx">w</span> <span class="o">:=</span> <span class="nx">httptest</span><span class="p">.</span><span class="nx">NewRecorder</span><span class="p">()</span>
+
+<span class="c1">// returns 200 on error</span>
+<span class="nx">t</span> <span class="o">:=</span> <span class="nx">template</span><span class="p">.</span><span class="nx">Must</span><span class="p">(</span><span class="nx">template</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="s">&quot;foo&quot;</span><span class="p">).</span><span class="nx">Parse</span><span class="p">(</span><span class="nx">src</span><span class="p">))</span>
+<span class="nx">err</span> <span class="o">:=</span> <span class="nx">t</span><span class="p">.</span><span class="nx">Execute</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="kc">nil</span><span class="p">)</span>
+<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+  <span class="nx">w</span><span class="p">.</span><span class="nx">WriteHeader</span><span class="p">(</span><span class="mi">500</span><span class="p">)</span> <span class="c1">// doesn&#39;t happen</span>
+<span class="p">}</span>
+
+<span class="c1">// returns 500 on error</span>
+<span class="nx">t</span> <span class="p">=</span> <span class="nx">template</span><span class="p">.</span><span class="nx">Must</span><span class="p">(</span><span class="nx">template</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="s">&quot;foo&quot;</span><span class="p">).</span><span class="nx">Parse</span><span class="p">(</span><span class="nx">src</span><span class="p">))</span>
+<span class="nx">err</span> <span class="p">=</span> <span class="nx">t</span><span class="p">.</span><span class="nx">Execute</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="p">[]</span><span class="kd">struct</span><span class="p">{}{})</span> <span class="c1">// note the empty struct</span>
+<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+  <span class="nx">w</span><span class="p">.</span><span class="nx">WriteHeader</span><span class="p">(</span><span class="mi">500</span><span class="p">)</span> <span class="c1">// acutally happens</span>
+<span class="p">}</span></code></pre></div>
+
+<p>This happens because we’re writing an HTTP response using an
+<code>http.ResponseWriter</code>. Even though we haven’t processed the whole template,
+we’ve written some bytes and therefore already sent a 200 OK. </p>
+
+<p>From the docs:</p>
+
+<div class="highlight"><pre><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">ResponseWriter</span> <span class="kd">interface</span> <span class="p">{</span>
+    <span class="c1">// ...</span>
+    <span class="c1">// If WriteHeader has not yet been called, Write calls </span>
+    <span class="c1">// WriteHeader(http.StatusOK) before writing the data.</span>
+    <span class="c1">// ...</span>
+    <span class="nx">Write</span><span class="p">([]</span><span class="kt">byte</span><span class="p">)</span> <span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span>
+<span class="p">}</span></code></pre></div>
+
+<p>It’s not ideal to call the request a success if the template failed to execute.
+To fix this, you can buffer your template results before you respond:</p>
+
+<div class="highlight"><pre><code class="language-go" data-lang="go"><span class="kd">var</span> <span class="nx">b</span> <span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span>
+<span class="nx">err</span> <span class="p">=</span> <span class="nx">template</span><span class="p">.</span><span class="nx">Execute</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">b</span><span class="p">,</span> <span class="nx">p</span><span class="p">)</span>
+<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+  <span class="nx">http</span><span class="p">.</span><span class="nx">Error</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="nx">err</span><span class="p">.</span><span class="nx">Error</span><span class="p">(),</span> <span class="nx">http</span><span class="p">.</span><span class="nx">StatusInternalServerError</span><span class="p">)</span>
+  <span class="k">return</span>
+<span class="p">}</span>
+<span class="nx">b</span><span class="p">.</span><span class="nx">WriteTo</span><span class="p">(</span><span class="nx">w</span><span class="p">)</span> <span class="c1">// 200 OK</span></code></pre></div>
+
+<p>The documentation for <code>(*template.Template) Execute()</code> mentions this:</p>
+
+<div class="highlight"><pre><code class="language-go" data-lang="go"><span class="c1">// If an error occurs executing the template or writing its output,</span>
+<span class="c1">// execution stops, but partial results may already have been written to the </span>
+<span class="c1">// output writer.</span></code></pre></div>
+
+<p>This is sadly something that you “just must know”. A close reading of <strong>all</strong>
+the docs is required to know how <code>http.ResponseWriter</code> actually works. It would
+be nice if <a href="https://golang.org/doc/articles/wiki/">Writing Web Applications</a> at
+least mentioned this in the somewhat misleading example above.</p>
+
+<p>Tags: #golang, #go, #programming, #bugs, #webapps</p>
+
+
+                <hr>
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2015/01/21/autotest-for-go/" data-toggle="tooltip" data-placement="top" title="Autotest for Go">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                </ul>
+
+            </div>
+        </div>
+    </div>
+</article>
+
+<hr>
+
+
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+                    <li>
+                        <a href="/feed.xml">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-rss fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a href="https://twitter.com/cmdrkeene">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                    
+                    
+                    
+                    <li>
+                        <a href="https://github.com/cmdrkeene">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                    
+                </ul>
+                <p class="copyright text-muted">Copyright &copy; Keene Industries 2015</p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js "></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="/js/bootstrap.min.js "></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/clean-blog.min.js "></script>
+
+
+</body>
+
+</html>
