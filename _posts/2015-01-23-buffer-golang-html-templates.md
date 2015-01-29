@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      "Buffer Your Golang HTML Templates, Or Else"
-subtitle:   "Run your Go tests automatically with the entr(1) unix utility"
+subtitle:   "Safer usage of the standard html/template package"
 date:       2015-01-23 12:00:00
 author:     "Brandon Keene"
 header-img: "img/post-bg-02.jpg"
